@@ -20,7 +20,7 @@ const PaddingFromBottom = 4
 
 const chipxoffset = 160
 
-const FontSize = 8
+const FontSize = 9
 
 //Padding
 
@@ -30,7 +30,7 @@ function AppendPort(ParentObject, IsInput, PortType, [posx, posy], PortName) {
     var Model = "Data"
     var HasDefaultValue = false
     var portoffset = 5
-
+    var ExecHeight = 0
     var prtheight = 0
     try {
         Color = PType["Color"]
@@ -49,6 +49,7 @@ function AppendPort(ParentObject, IsInput, PortType, [posx, posy], PortName) {
             .attr("d", "M._posx,._posyh-16.465c-0.552,0,-1,0.448,-1,1v16c0,0.552,0.448,1,1,1h16.465c0.334,0,0.647,-0.167,0.832,-0.445l5.333,-8c0.224,-0.336,0.224,-0.774,0,-1.11l-5.333,-8c-0.185,-0.278,-0.498,-0.445,-0.832,-0.445z".replace("._posx", posxrep).replace("._posy", posy))
             .attr("fill", Color)
         prtheight = 18
+        ExecHeight = 1.5
     } else if (Model == "Data") {
         if (HasDefaultValue && IsInput) {
             ParentObject.append("g")
@@ -107,16 +108,15 @@ function AppendPort(ParentObject, IsInput, PortType, [posx, posy], PortName) {
     var Anch = "start"
     if (!IsInput) {Anch = "end"; portoffset = -16} else {portoffset = 16}
 
-    ParentObject.append("svg:text")
+    const OutTex = ParentObject.append("svg:text")
         .attr("x", posx + portoffset)
-        .attr("y", posy+12.5)
+        .attr("y", posy+ 12.5 + ExecHeight)
         .text(PortName)
         .attr("fill", "white")
         .attr("text-anchor", Anch)
         .attr("font-size", "medium")
         .attr("font-family", "Ubuntu")
-    
-    return [prtheight, PortName.length * FontSize + HorizontalPortPadding]
+    return [prtheight]
 }
 
 function GenerateSVG (tempUUID) {
@@ -127,10 +127,9 @@ function GenerateSVG (tempUUID) {
         .attr("xmlns", "http://www.w3.org/2000/svg")
         .attr("viewbox", "0 0 800 800")
 
-    NewChip.append("defs")
-        .append("style")
-            .attr("type", "text/css")
-            .html("@import url('https://fonts.googleapis.com/css2?family=Ubuntu');")
+    NewChip.append("style")
+        .attr("type", "text/css")
+        .html("@import url('https://fonts.googleapis.com/css2?family=Ubuntu');")
 
     const Title = NewChip
         .append("svg:text")
@@ -142,7 +141,7 @@ function GenerateSVG (tempUUID) {
             .attr("font-size", "medium")
             .attr("font-family", "Ubuntu")
 
-    const TopBarWidth = Title.text().length * FontSize + 57 * 2
+    var TopBarWidth = Title.text().length * FontSize + 57 * 2
     Title.attr("x", TopBarWidth/2 + chipxoffset).attr("y", TopHeight/2+FontSize)
     const Bottom = NewChip 
             .append("path")
@@ -165,24 +164,29 @@ function GenerateSVG (tempUUID) {
         if (Funcs["Outputs"].length > 0) {
             TotalOutputSpacing = (Funcs["Outputs"].length) * VerticalPortPadding - 1 + Funcs["Outputs"].length * PortHeight
         }
-    
+        
+        for (const port of Funcs["Inputs"]) {
+            if (port["Name"].len + HorizontalPortPadding > LargestInputText) {
+                LargestInputText = port["Name"].len + HorizontalPortPadding
+            }
+        }
+        for (const port of Funcs["Outputs"]) {
+            if (port["Name"].len + HorizontalPortPadding > LargestOutputText) {
+                LargestOutputText = port["Name"].len
+            }
+        }
+
         for (const port of Funcs["Inputs"]) {
             const RtrnVL = AppendPort(NewChip, true, port["DataType"], [chipxoffset, InSpacing], port["Name"])
             const returnedwidth = RtrnVL[0]
             const namelen = RtrnVL[1]
             InSpacing = InSpacing + returnedwidth + VerticalPortPadding
-            if (namelen > LargestInputText) {
-                LargestInputText = namelen
-            }
         }
         for (const port of Funcs["Outputs"]) {
-            const RtrnVL = AppendPort(NewChip, false, port["DataType"], [chipxoffset + Math.max(MinimalPadding, TopBarWidth), OutSpacing], port["Name"])
+            const RtrnVL = AppendPort(NewChip, false, port["DataType"], [chipxoffset + Math.max(MinimalPadding, TopBarWidth, LargestInputText + LargestOutputText), OutSpacing], port["Name"])
             const returnedwidth = RtrnVL[0]
             const namelen = RtrnVL[1]
             OutSpacing = OutSpacing + returnedwidth + VerticalPortPadding
-            if (namelen > LargestOutputText) {
-                LargestOutputText = namelen
-            }
         }
     } catch (err) {}
 
@@ -202,6 +206,8 @@ function GenerateSVG (tempUUID) {
             )
             .attr("fill", "#525152")
     Title.raise()
+    TopBarWidth = ChipLen
+    Title.attr("x", TopBarWidth/2 + chipxoffset).attr("y", TopHeight/2+FontSize)
     return (Template.window.document.documentElement.innerHTML.replace("<head></head>", "").replace("<body>", "").replace("</body>", ""))
 }
 
